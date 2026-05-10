@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  background: #00060f;
+}
+
+body:has([role="dialog"]) {
+  overflow: hidden;
+}
+
+.stripe-modal-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.stripe-modal-scroll::-webkit-scrollbar {
+  display: none;
+}
