@@ -301,12 +301,12 @@ function ProductPage({ product, selectedSize, onSelectSize, onBack, onAdd, onBuy
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="relative z-10 min-h-[calc(100vh-77px)] px-4 py-8"
+      className="mobile-product-main relative z-10 min-h-[calc(100vh-77px)] px-4 py-8"
     >
       <div className="mx-auto max-w-7xl">
         <button
           onClick={onBack}
-          className="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white/80 transition hover:border-cyan-300/40 hover:text-white"
+          className="mobile-back-button mb-6 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white/80 transition hover:border-cyan-300/40 hover:text-white"
         >
           ← Volver al catálogo
         </button>
@@ -318,8 +318,8 @@ function ProductPage({ product, selectedSize, onSelectSize, onBack, onAdd, onBuy
             transition={{ duration: 0.28 }}
             className="lg:sticky lg:top-28"
           >
-            <div className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/30">
-              <div className="relative h-[520px] overflow-hidden bg-black/40">
+            <div className="mobile-product-photo-wrap overflow-hidden rounded-[2.2rem] border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/30">
+              <div className="mobile-product-photo relative h-[520px] overflow-hidden bg-black/40">
                 <ProductImage src={product.image} alt={product.name} className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-center justify-between gap-3">
                   <span className="rounded-full border border-white/10 bg-black/55 px-4 py-2 text-xs font-black backdrop-blur">
@@ -358,11 +358,11 @@ function ProductPage({ product, selectedSize, onSelectSize, onBack, onAdd, onBuy
             initial={{ opacity: 0, x: 22 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.32 }}
-            className="rounded-[2.2rem] border border-white/10 bg-[#020914]/90 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-7"
+            className="mobile-product-info rounded-[2.2rem] border border-white/10 bg-[#020914]/90 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-7"
           >
             <p className="text-xs font-black uppercase tracking-[0.35em] text-cyan-300">Producto</p>
-            <h2 className="mt-3 text-4xl font-black leading-tight md:text-5xl">{product.name}</h2>
-            <p className="mt-5 text-base leading-relaxed text-white/60">{product.desc}</p>
+            <h2 className="mobile-product-title mt-3 text-4xl font-black leading-tight md:text-5xl">{product.name}</h2>
+            <p className="mobile-product-desc mt-5 text-base leading-relaxed text-white/60">{product.desc}</p>
 
             {!product.isFixedPrice && (
               <div className="mt-7 rounded-3xl border border-emerald-300/20 bg-emerald-300/10 p-5">
@@ -417,7 +417,7 @@ function ProductPage({ product, selectedSize, onSelectSize, onBack, onAdd, onBuy
               </p>
             )}
 
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            <div className="mobile-product-actions mt-7 grid gap-3 sm:grid-cols-2">
               <button
                 onClick={() => onAdd(product, product.isFixedPrice ? null : selectedSize)}
                 disabled={!canAdd}
@@ -625,6 +625,200 @@ export default function App() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#00060F] text-white">
+      <style>{`
+        @media (max-width: 640px) {
+          .mobile-shell {
+            padding-left: 0.85rem !important;
+            padding-right: 0.85rem !important;
+            padding-top: 1rem !important;
+          }
+
+          .mobile-header-inner {
+            padding: 0.85rem 0.9rem !important;
+            align-items: center !important;
+            gap: 0.75rem !important;
+          }
+
+          .mobile-brand-kicker {
+            font-size: 0.62rem !important;
+            letter-spacing: 0.22em !important;
+          }
+
+          .mobile-brand-title {
+            font-size: 1.15rem !important;
+            line-height: 1.15 !important;
+            max-width: 12rem !important;
+          }
+
+          .mobile-cart-button {
+            min-width: 3rem !important;
+            min-height: 3rem !important;
+            padding: 0 !important;
+            justify-content: center !important;
+            border-radius: 1rem !important;
+          }
+
+          .mobile-filter-card {
+            margin-bottom: 1rem !important;
+            padding: 0.75rem !important;
+            border-radius: 1.35rem !important;
+          }
+
+          .mobile-search-input {
+            padding-top: 0.85rem !important;
+            padding-bottom: 0.85rem !important;
+            border-radius: 1rem !important;
+            font-size: 0.9rem !important;
+          }
+
+          .mobile-category-row {
+            gap: 0.45rem !important;
+            margin-left: -0.1rem !important;
+            margin-right: -0.1rem !important;
+            padding-bottom: 0.25rem !important;
+          }
+
+          .mobile-category-button {
+            padding: 0.68rem 0.85rem !important;
+            border-radius: 999px !important;
+            font-size: 0.78rem !important;
+          }
+
+          .mobile-product-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.75rem !important;
+          }
+
+          .mobile-product-card {
+            border-radius: 1.15rem !important;
+          }
+
+          .mobile-product-image {
+            aspect-ratio: 1 / 1.18 !important;
+          }
+
+          .mobile-card-badges {
+            left: 0.55rem !important;
+            top: 0.55rem !important;
+            gap: 0.3rem !important;
+          }
+
+          .mobile-card-badges span {
+            padding: 0.25rem 0.48rem !important;
+            font-size: 0.62rem !important;
+            max-width: 6.25rem !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+          }
+
+          .mobile-card-body {
+            padding: 0.72rem !important;
+          }
+
+          .mobile-card-title {
+            font-size: 0.95rem !important;
+            line-height: 1.15 !important;
+          }
+
+          .mobile-card-desc {
+            display: none !important;
+          }
+
+          .mobile-card-rating {
+            display: none !important;
+          }
+
+          .mobile-card-footer {
+            margin-top: 0.7rem !important;
+            align-items: stretch !important;
+            flex-direction: column !important;
+            gap: 0.55rem !important;
+          }
+
+          .mobile-card-price {
+            font-size: 1.05rem !important;
+            line-height: 1.15 !important;
+          }
+
+          .mobile-card-add {
+            width: 100% !important;
+            padding: 0.65rem 0.75rem !important;
+            border-radius: 0.9rem !important;
+            font-size: 0.8rem !important;
+          }
+
+          .mobile-product-main {
+            padding-left: 0.85rem !important;
+            padding-right: 0.85rem !important;
+            padding-top: 1rem !important;
+          }
+
+          .mobile-back-button {
+            margin-bottom: 0.9rem !important;
+            width: 100% !important;
+            padding: 0.85rem 1rem !important;
+            border-radius: 1rem !important;
+          }
+
+          .mobile-product-photo-wrap {
+            border-radius: 1.35rem !important;
+          }
+
+          .mobile-product-photo {
+            height: min(76vw, 360px) !important;
+          }
+
+          .mobile-product-info {
+            border-radius: 1.35rem !important;
+            padding: 1rem !important;
+          }
+
+          .mobile-product-title {
+            font-size: 1.8rem !important;
+            line-height: 1.08 !important;
+          }
+
+          .mobile-product-desc {
+            margin-top: 0.85rem !important;
+            font-size: 0.92rem !important;
+          }
+
+          .mobile-product-actions {
+            margin-top: 1rem !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .mobile-cart-panel {
+            max-width: none !important;
+            width: 100% !important;
+            padding: 1rem !important;
+            border-left: 0 !important;
+            border-top-left-radius: 1.5rem !important;
+            border-top-right-radius: 1.5rem !important;
+          }
+
+          .mobile-cart-item {
+            border-radius: 1.1rem !important;
+            padding: 0.7rem !important;
+          }
+
+          .mobile-cart-image {
+            width: 4.2rem !important;
+            height: 4.2rem !important;
+          }
+
+          .mobile-cart-total {
+            padding: 1rem !important;
+            border-radius: 1.1rem !important;
+          }
+
+          .mobile-cart-total-price {
+            font-size: 1.7rem !important;
+          }
+        }
+      `}</style>
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute -right-40 top-40 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl" />
@@ -632,12 +826,12 @@ export default function App() {
       </div>
 
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#00060F]/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
+        <div className="mobile-header-inner mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-cyan-300">Outlet Stock</p>
-            <h1 className="text-2xl font-black md:text-3xl">Outlet Stock - Catálogo</h1>
+            <p className="mobile-brand-kicker text-xs uppercase tracking-[0.35em] text-cyan-300">Outlet Stock</p>
+            <h1 className="mobile-brand-title text-2xl font-black md:text-3xl">Outlet Stock - Catálogo</h1>
           </div>
-          <button onClick={() => setCartOpen(true)} className="relative flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 shadow-lg shadow-cyan-500/10 transition hover:bg-cyan-400/20">
+          <button onClick={() => setCartOpen(true)} className="mobile-cart-button relative flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 shadow-lg shadow-cyan-500/10 transition hover:bg-cyan-400/20">
             <Icon name="cart" size={20} />
             <span className="hidden font-semibold sm:inline">Carrito</span>
             {count > 0 && <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-emerald-400 px-1 text-xs font-black text-black">{count}</span>}
@@ -665,16 +859,16 @@ export default function App() {
           </div>
         </main>
       ) : (
-        <main className="relative z-10 mx-auto max-w-7xl px-4 py-8">
-          <section className="mb-7 rounded-[2rem] border border-white/10 bg-white/[0.035] p-4 md:p-5">
+        <main className="mobile-shell relative z-10 mx-auto max-w-7xl px-4 py-8">
+          <section className="mobile-filter-card mb-7 rounded-[2rem] border border-white/10 bg-white/[0.035] p-4 md:p-5">
             <div className="flex flex-col items-stretch justify-between gap-4 lg:flex-row lg:items-center">
               <div className="relative flex-1">
                 <Icon name="search" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={20} />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto..." className="w-full rounded-2xl border border-white/10 bg-black/35 px-12 py-4 outline-none transition focus:border-cyan-300/60" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto..." className="mobile-search-input w-full rounded-2xl border border-white/10 bg-black/35 px-12 py-4 outline-none transition focus:border-cyan-300/60" />
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
+              <div className="mobile-category-row flex gap-2 overflow-x-auto pb-1 lg:pb-0">
                 {categories.map((cat) => (
-                  <button key={cat} onClick={() => setCategory(cat)} className={`shrink-0 rounded-2xl border px-4 py-3 text-sm font-bold transition ${category === cat ? "border-cyan-300 bg-cyan-300 text-black" : "border-white/10 bg-black/25 text-white/65 hover:text-white"}`}>
+                  <button key={cat} onClick={() => setCategory(cat)} className={`mobile-category-button shrink-0 rounded-2xl border px-4 py-3 text-sm font-bold transition ${category === cat ? "border-cyan-300 bg-cyan-300 text-black" : "border-white/10 bg-black/25 text-white/65 hover:text-white"}`}>
                     {cat}
                   </button>
                 ))}
@@ -699,7 +893,7 @@ export default function App() {
             </div>
           )}
 
-          <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <section className="mobile-product-grid grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((product, index) => (
               <motion.article
                 key={product.id}
@@ -707,11 +901,11 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.04 }}
                 onClick={() => openProductPage(product)}
-                className="group cursor-pointer overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/[0.045] shadow-xl shadow-black/20 transition hover:border-cyan-300/35"
+                className="mobile-product-card group cursor-pointer overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/[0.045] shadow-xl shadow-black/20 transition hover:border-cyan-300/35"
               >
-                <div className="relative aspect-[4/5] overflow-hidden bg-black/40">
+                <div className="mobile-product-image relative aspect-[4/5] overflow-hidden bg-black/40">
                   <ProductImage src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                  <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                  <div className="mobile-card-badges absolute left-4 top-4 flex flex-wrap gap-2">
                     <span className="rounded-full border border-white/10 bg-black/55 px-3 py-1 text-xs font-bold backdrop-blur">{product.category}</span>
                     <span className={`rounded-full border px-3 py-1 text-xs font-bold backdrop-blur ${product.stock ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-300" : "border-red-300/25 bg-red-400/15 text-red-300"}`}>
                       {product.stock ? "Disponible" : "Agotado"}
@@ -719,18 +913,18 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="p-5">
+                <div className="mobile-card-body p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="line-clamp-2 text-xl font-black leading-tight">{product.name}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-white/55">{product.desc}</p>
+                      <h3 className="mobile-card-title line-clamp-2 text-xl font-black leading-tight">{product.name}</h3>
+                      <p className="mobile-card-desc mt-2 line-clamp-2 text-sm text-white/55">{product.desc}</p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 text-sm font-black text-amber-300"><Icon name="star" size={16} /> {product.rating}</div>
+                    <div className="mobile-card-rating flex shrink-0 items-center gap-1 text-sm font-black text-amber-300"><Icon name="star" size={16} /> {product.rating}</div>
                   </div>
 
-                  <div className="mt-5 flex items-center justify-between gap-4">
-                    <p className="text-2xl font-black text-emerald-300">{getProductDisplayPrice(product)}</p>
-                    <button disabled={!product.stock} onClick={(e) => { e.stopPropagation(); addToCart(product); }} className="rounded-2xl bg-white px-4 py-3 font-black text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40">Agregar</button>
+                  <div className="mobile-card-footer mt-5 flex items-center justify-between gap-4">
+                    <p className="mobile-card-price text-2xl font-black text-emerald-300">{getProductDisplayPrice(product)}</p>
+                    <button disabled={!product.stock} onClick={(e) => { e.stopPropagation(); addToCart(product); }} className="mobile-card-add rounded-2xl bg-white px-4 py-3 font-black text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40">Agregar</button>
                   </div>
                 </div>
               </motion.article>
@@ -744,7 +938,7 @@ export default function App() {
         {cartOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCartOpen(false)} className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" />
-            <motion.aside initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 230 }} className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#020914] p-5">
+            <motion.aside initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 230 }} className="mobile-cart-panel fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#020914] p-5">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div><p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Pedido</p><h2 className="text-2xl font-black">Carrito</h2></div>
                 <button onClick={() => setCartOpen(false)} className="rounded-xl bg-white/10 p-3 transition hover:bg-white/15"><Icon name="close" size={20} /></button>
@@ -755,8 +949,8 @@ export default function App() {
                   <div className="grid h-full place-items-center text-center text-white/50"><div><Icon name="cart" className="mx-auto mb-3" size={26} /><p>Tu carrito está vacío.</p></div></div>
                 ) : (
                   cart.map((item) => (
-                    <div key={item.cartId} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                      <ProductImage src={item.image} alt={item.name} className="h-20 w-20 rounded-xl object-cover" overlay={false} />
+                    <div key={item.cartId} className="mobile-cart-item flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                      <ProductImage src={item.image} alt={item.name} className="mobile-cart-image h-20 w-20 rounded-xl object-cover" overlay={false} />
                       <div className="min-w-0 flex-1">
                         <h4 className="truncate font-black">{item.name}</h4>
                         {item.selectedSize && <p className="text-xs text-cyan-200">Talla: {item.selectedSize}</p>}
@@ -773,10 +967,10 @@ export default function App() {
               </div>
 
               <div className="space-y-4 border-t border-white/10 pt-4">
-                <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-cyan-300/[0.04] p-5">
+                <div className="mobile-cart-total rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-cyan-300/[0.04] p-5">
                   <div className="flex items-center justify-between">
                     <span className="text-xl font-black text-white">Total</span>
-                    <b className="text-3xl font-black text-emerald-300">{euro(total)}</b>
+                    <b className="mobile-cart-total-price text-3xl font-black text-emerald-300">{euro(total)}</b>
                   </div>
                 </div>
 
