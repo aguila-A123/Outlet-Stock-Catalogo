@@ -7,6 +7,7 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwa2RhdWJhcnFudXRidW5ja2VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NjAzMjAsImV4cCI6MjA5MzEzNjMyMH0.36MsbMngO6lOBzFvKNsMHxk_djEYpzKR3sdCxsT8ids";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const WHATSAPP_PHONE = "34628241616";
+const CART_STORAGE_KEY = "outlet_stock_cart_v1";
 
 function euro(value) {
   return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(Number(value) || 0);
@@ -90,6 +91,43 @@ function cartTotals(cart) {
   const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const count = cart.reduce((sum, item) => sum + item.qty, 0);
   return { count, total };
+}
+
+function normalizeStoredCart(cart) {
+  if (!Array.isArray(cart)) return [];
+
+  return cart
+    .map((item) => ({
+      ...item,
+      cartId: item.cartId || String(item.id || cryptoRandomId()),
+      price: Number(item.price) || 0,
+      qty: Math.max(1, Number(item.qty) || 1),
+      name: item.name || "Producto sin nombre",
+      selectedSize: item.selectedSize || null
+    }))
+    .filter((item) => item.cartId && item.price >= 0 && item.qty > 0);
+}
+
+function loadCartFromStorage() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const rawCart = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (!rawCart) return [];
+    return normalizeStoredCart(JSON.parse(rawCart));
+  } catch {
+    return [];
+  }
+}
+
+function saveCartToStorage(cart) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(normalizeStoredCart(cart)));
+  } catch {
+    // Si el navegador bloquea localStorage, la tienda sigue funcionando sin persistencia.
+  }
 }
 
 function buildWhatsAppOrderMessage(cart, total) {
@@ -415,6 +453,7 @@ function runSelfTests() {
   const totals = cartTotals([{ id: 1, name: "A", price: 10, qty: 2 }]);
   const whatsappMessage = buildWhatsAppOrderMessage([{ id: 1, name: "Camisa", price: 10, qty: 2, selectedSize: "M" }], 20);
   const whatsappUrl = buildWhatsAppUrl("+34 628 24 16 16", whatsappMessage);
+  const storedCart = normalizeStoredCart([{ id: 1, name: "Camisa", price: "10", qty: "2", cartId: "camisa-m" }]);
 
   console.assert(euro(10).includes("10"), "euro() should format numeric values");
   console.assert(mockProduct.name === "Camisa", "normalizeProduct() should map Spanish product names");
@@ -429,6 +468,7 @@ function runSelfTests() {
   console.assert(whatsappMessage.includes("*Nuevo pedido - Outlet Stock*"), "buildWhatsAppOrderMessage() should include WhatsApp bold title");
   console.assert(whatsappMessage.includes("*Talla:* M"), "buildWhatsAppOrderMessage() should include selected size");
   console.assert(whatsappUrl.startsWith("https://wa.me/34628241616?text="), "buildWhatsAppUrl() should clean phone and build wa.me URL");
+  console.assert(storedCart.length === 1 && storedCart[0].qty === 2, "normalizeStoredCart() should restore persisted cart items safely");
 }
 
 if (typeof window !== "undefined" && !window.__OUTLET_STOCK_OFFICIAL_TESTED__) {
@@ -442,7 +482,7 @@ export default function App() {
   const [productError, setProductError] = useState("");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todos");
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => loadCartFromStorage());
   const [cartOpen, setCartOpen] = useState(false);
   const [toastItems, setToastItems] = useState([]);
   const [selectedSize, setSelectedSize] = useState(null);
@@ -495,6 +535,10 @@ export default function App() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    saveCartToStorage(cart);
+  }, [cart]);
 
   useEffect(() => {
     function handlePopState() {
