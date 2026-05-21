@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
-import { MessageCircle } from "lucide-react";
+import { LogOut, Mail, MessageCircle, UserCircle2 } from "lucide-react";
 import ChatView from "./ChatView.jsx";
 import AuthModal from "./AuthModal.jsx";
 
@@ -472,6 +472,7 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authReason, setAuthReason] = useState("Para continuar necesitas iniciar sesión o crear una cuenta.");
   const [pendingAction, setPendingAction] = useState(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const categories = useMemo(() => buildCategories(products), [products]);
   const filteredProducts = useMemo(() => filterProducts(products, query, category), [products, query, category]);
@@ -528,6 +529,47 @@ export default function App() {
     setAuthModalOpen(true);
     return false;
   }
+
+  function getProfileDisplayName() {
+    return (
+      profile?.nombre ||
+      profile?.name ||
+      profile?.full_name ||
+      profile?.username ||
+      user?.user_metadata?.nombre ||
+      user?.user_metadata?.name ||
+      user?.email?.split("@")[0] ||
+      "Usuario"
+    );
+  }
+
+  function openAuthFromProfile() {
+    setProfileMenuOpen(false);
+    setAuthReason("Inicia sesión o crea una cuenta para ver tu perfil y usar el chat.");
+    setPendingAction(null);
+    setAuthModalOpen(true);
+  }
+
+  async function handleSignOut() {
+    setProfileMenuOpen(false);
+    setChatOpen(false);
+    setChatCartItems([]);
+    setProfile(null);
+    setSession(null);
+    await supabase.auth.signOut();
+    if (window.location.pathname === "/chat") window.history.pushState({}, "", "/");
+  }
+
+  useEffect(() => {
+    function closeProfileMenu(event) {
+      if (!event.target.closest?.("[data-profile-menu]")) {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("click", closeProfileMenu);
+    return () => window.removeEventListener("click", closeProfileMenu);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -928,6 +970,80 @@ export default function App() {
               <span className="hidden font-semibold sm:inline">Carrito</span>
               {count > 0 && <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-emerald-400 px-1 text-xs font-black text-black">{count}</span>}
             </button>
+            <div className="relative" data-profile-menu>
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setProfileMenuOpen((open) => !open);
+                }}
+                className="mobile-cart-button relative flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 shadow-lg shadow-emerald-500/10 transition hover:bg-emerald-400/20"
+                aria-label="Abrir perfil"
+              >
+                <UserCircle2 size={21} />
+                <span className="hidden font-semibold sm:inline">Perfil</span>
+              </button>
+
+              <AnimatePresence>
+                {profileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.16 }}
+                    className="absolute right-0 top-[calc(100%+0.75rem)] z-[90] w-72 overflow-hidden rounded-3xl border border-white/10 bg-[#020914]/95 p-4 text-white shadow-2xl shadow-black/40 backdrop-blur-xl"
+                  >
+                    {user ? (
+                      <>
+                        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-400 text-black">
+                            <UserCircle2 size={28} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black">{getProfileDisplayName()}</p>
+                            <p className="truncate text-xs text-white/50">Perfil registrado</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">Nombre</p>
+                            <p className="mt-1 truncate text-sm font-bold text-white/90">{getProfileDisplayName()}</p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                            <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300"><Mail size={13} /> Email</p>
+                            <p className="mt-1 truncate text-sm font-bold text-white/90">{user.email}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleSignOut}
+                          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm font-black text-red-100 transition hover:bg-red-400 hover:text-black"
+                        >
+                          <LogOut size={17} />
+                          Cerrar sesión
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-center">
+                          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/[0.06] text-white/80">
+                            <UserCircle2 size={34} />
+                          </div>
+                          <p className="mt-3 text-lg font-black">Tu perfil</p>
+                          <p className="mt-1 text-sm leading-relaxed text-white/55">Inicia sesión o regístrate para comprar, usar el chat y guardar tu historial.</p>
+                        </div>
+                        <button
+                          onClick={openAuthFromProfile}
+                          className="mt-4 w-full rounded-2xl bg-gradient-to-r from-cyan-300 via-sky-400 to-violet-500 px-4 py-3 text-sm font-black text-black shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01]"
+                        >
+                          Iniciar sesión / Registrarse
+                        </button>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </header>
