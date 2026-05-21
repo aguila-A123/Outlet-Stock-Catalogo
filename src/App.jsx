@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
+import { MessageCircle } from "lucide-react";
+import ChatView from "./ChatView.jsx";
+import AuthModal from "./AuthModal.jsx";
 
 const SUPABASE_URL = "https://qpkdaubarqnutbunckeh.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwa2RhdWJhcnFudXRidW5ja2VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NjAzMjAsImV4cCI6MjA5MzEzNjMyMH0.36MsbMngO6lOBzFvKNsMHxk_djEYpzKR3sdCxsT8ids";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const WHATSAPP_PHONE = "34628241616";
 const CART_STORAGE_KEY = "outlet_stock_cart_v1";
+const PENDING_ORDER_STORAGE_KEY = "outlet_stock_pending_order_v2";
 
 function euro(value) {
   return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(Number(value) || 0);
@@ -130,41 +133,15 @@ function saveCartToStorage(cart) {
   }
 }
 
-function buildWhatsAppOrderMessage(cart, total) {
-  const lines = [
-    "🛒 *Nuevo pedido - Outlet Stock*",
-    "",
-    "Hola, quiero realizar este pedido:",
-    "",
-    "━━━━━━━━━━━━━━"
-  ];
-
-  cart.forEach((item, index) => {
-    const itemTotal = item.price * item.qty;
-
-    lines.push(
-      `📦 *Producto ${index + 1}:* ${item.name}`,
-      item.selectedSize ? `📌 *Talla:* ${item.selectedSize}` : null,
-      `🔢 *Cantidad:* ${item.qty}`,
-      `💰 *Precio:* ${euro(item.price)}${item.qty > 1 ? " c/u" : ""}`,
-      item.qty > 1 ? `🧾 *Importe:* ${euro(itemTotal)}` : null,
-      ""
-    );
-  });
-
-  lines.push(
-    "━━━━━━━━━━━━━━",
-    `💵 *Total:* ${euro(total)}`,
-    "",
-    "Quedo atento para confirmar disponibilidad y coordinar el siguiente paso."
-  );
-
-  return lines.filter(Boolean).join(String.fromCharCode(10));
-}
-
-function buildWhatsAppUrl(phone, message) {
-  const cleanPhone = String(phone).replace(/[^0-9]/g, "");
-  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+function mapCartToChatItems(cart) {
+  return cart.map((item) => ({
+    id: item.cartId,
+    name: item.name,
+    size: item.selectedSize || "Única",
+    qty: item.qty,
+    price: Number(item.price) || 0,
+    image: item.image || "",
+  }));
 }
 
 async function fetchFirstAvailableTable(tableNames, options = {}) {
@@ -277,6 +254,7 @@ function ToastStack({ items, onRemove }) {
           </motion.div>
         ))}
       </AnimatePresence>
+
     </div>
   );
 }
@@ -451,9 +429,8 @@ function runSelfTests() {
   const mockProduct = normalizeProduct({ id: 1, nombre: "Camisa", categoria: "Ropa", precio: 12, stock: 3 });
   const mockSized = normalizeProduct({ id: 2, nombre: "Zapatilla", tipo_precio: "por talla", product_sizes: [{ talla: "42", precio: 30 }] });
   const totals = cartTotals([{ id: 1, name: "A", price: 10, qty: 2 }]);
-  const whatsappMessage = buildWhatsAppOrderMessage([{ id: 1, name: "Camisa", price: 10, qty: 2, selectedSize: "M" }], 20);
-  const whatsappUrl = buildWhatsAppUrl("+34 628 24 16 16", whatsappMessage);
   const storedCart = normalizeStoredCart([{ id: 1, name: "Camisa", price: "10", qty: "2", cartId: "camisa-m" }]);
+  const chatItems = mapCartToChatItems([{ cartId: "1-M", name: "Camisa", selectedSize: "M", qty: 2, price: 12, image: "" }]);
 
   console.assert(euro(10).includes("10"), "euro() should format numeric values");
   console.assert(mockProduct.name === "Camisa", "normalizeProduct() should map Spanish product names");
@@ -465,10 +442,8 @@ function runSelfTests() {
   console.assert(filterProducts([mockProduct], "", "Ropa").every((p) => p.category === "Ropa"), "filterProducts() should filter by category");
   console.assert(totals.total === 20, "cartTotals() should sum only product prices and quantities");
   console.assert(cartTotals([{ price: 10, qty: 1 }, { price: 5, qty: 2 }]).total === 20, "cartTotals() should sum multiple cart items");
-  console.assert(whatsappMessage.includes("*Nuevo pedido - Outlet Stock*"), "buildWhatsAppOrderMessage() should include WhatsApp bold title");
-  console.assert(whatsappMessage.includes("*Talla:* M"), "buildWhatsAppOrderMessage() should include selected size");
-  console.assert(whatsappUrl.startsWith("https://wa.me/34628241616?text="), "buildWhatsAppUrl() should clean phone and build wa.me URL");
   console.assert(storedCart.length === 1 && storedCart[0].qty === 2, "normalizeStoredCart() should restore persisted cart items safely");
+  console.assert(chatItems[0].size === "M" && chatItems[0].id === "1-M", "mapCartToChatItems() should map cart items to chat shape");
 }
 
 if (typeof window !== "undefined" && !window.__OUTLET_STOCK_OFFICIAL_TESTED__) {
@@ -490,6 +465,13 @@ export default function App() {
     const match = window.location.pathname.match(/^\/p\/([^/]+)/);
     return match ? decodeURIComponent(match[1]) : null;
   });
+  const [chatOpen, setChatOpen] = useState(() => window.location.pathname === "/chat");
+  const [chatCartItems, setChatCartItems] = useState([]);
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authReason, setAuthReason] = useState("Para continuar necesitas iniciar sesión o crear una cuenta.");
+  const [pendingAction, setPendingAction] = useState(null);
 
   const categories = useMemo(() => buildCategories(products), [products]);
   const filteredProducts = useMemo(() => filterProducts(products, query, category), [products, query, category]);
@@ -498,6 +480,54 @@ export default function App() {
     () => products.find((product) => String(product.id) === String(activeProductId)) || null,
     [products, activeProductId]
   );
+
+  const user = session?.user || null;
+
+  async function loadUserProfile(userId) {
+    if (!userId) {
+      setProfile(null);
+      return null;
+    }
+
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    setProfile(data || null);
+    return data || null;
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      const currentSession = data?.session || null;
+      setSession(currentSession);
+      if (currentSession?.user?.id) loadUserProfile(currentSession.user.id);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      setSession(nextSession || null);
+      if (nextSession?.user?.id) loadUserProfile(nextSession.user.id);
+      else setProfile(null);
+    });
+
+    return () => {
+      active = false;
+      listener?.subscription?.unsubscribe?.();
+    };
+  }, []);
+
+  function requireAuth(reason, action) {
+    if (user) {
+      action?.();
+      return true;
+    }
+
+    setAuthReason(reason);
+    setPendingAction(() => action || null);
+    setAuthModalOpen(true);
+    return false;
+  }
 
   useEffect(() => {
     let active = true;
@@ -542,7 +572,23 @@ export default function App() {
 
   useEffect(() => {
     function handlePopState() {
-      const match = window.location.pathname.match(/^\/p\/([^/]+)/);
+      const path = window.location.pathname;
+      if (path === "/chat") {
+        if (!user) {
+          setChatOpen(false);
+          setAuthReason("Para usar el chat necesitas iniciar sesión o crear una cuenta.");
+          setAuthModalOpen(true);
+          window.history.replaceState({}, "", "/");
+          return;
+        }
+        setChatOpen(true);
+        setChatCartItems([]);
+        setActiveProductId(null);
+        setSelectedSize(null);
+        return;
+      }
+      setChatOpen(false);
+      const match = path.match(/^\/p\/([^/]+)/);
       setActiveProductId(match ? decodeURIComponent(match[1]) : null);
       setSelectedSize(null);
     }
@@ -560,6 +606,35 @@ export default function App() {
   function closePreview() {
     setActiveProductId(null);
     setSelectedSize(null);
+    window.history.pushState({}, "", "/");
+  }
+
+  function openChat(itemsForChat = [], reason = "Para usar el chat necesitas iniciar sesión o crear una cuenta.") {
+    const open = () => {
+      const safeItems = Array.isArray(itemsForChat) ? itemsForChat : [];
+
+      // Guardamos temporalmente el pedido para que ChatView lo pueda recoger aunque React
+      // remonte el componente o se navegue a /chat. El botón Chat normal guarda [] y no envía pedido.
+      if (safeItems.length > 0) {
+        try {
+          window.sessionStorage.setItem(PENDING_ORDER_STORAGE_KEY, JSON.stringify({ items: safeItems, createdAt: Date.now() }));
+        } catch {
+          // Si el navegador bloquea sessionStorage, igual se pasa por estado.
+        }
+      }
+
+      setChatCartItems(safeItems);
+      setChatOpen(true);
+      setActiveProductId(null);
+      setCartOpen(false);
+      window.history.pushState({}, "", "/chat");
+    };
+
+    requireAuth(reason, open);
+  }
+
+  function closeChat() {
+    setChatOpen(false);
     window.history.pushState({}, "", "/");
   }
 
@@ -602,14 +677,9 @@ export default function App() {
 
   function continueWithOrder() {
     if (cart.length === 0) return;
+    const items = mapCartToChatItems(cart);
 
-    const message = buildWhatsAppOrderMessage(cart, total);
-    const whatsappUrl = buildWhatsAppUrl(WHATSAPP_PHONE, message);
-    const opened = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-
-    if (!opened) {
-      window.location.href = whatsappUrl;
-    }
+    openChat(items, "Para continuar con el pedido necesitas iniciar sesión o registrarte.");
   }
 
   async function buyNow(product, size = null) {
@@ -621,6 +691,19 @@ export default function App() {
 
     setCart(newCart);
     setCartOpen(true);
+  }
+
+  if (chatOpen) {
+    return (
+      <ChatView
+        key={`${user?.id || "guest"}-${chatCartItems.map((i) => `${i.id}:${i.qty}`).join("|")}`}
+        cartItems={chatCartItems}
+        onBack={closeChat}
+        supabase={supabase}
+        user={user}
+        profile={profile}
+      />
+    );
   }
 
   return (
@@ -831,11 +914,21 @@ export default function App() {
             <p className="mobile-brand-kicker text-xs uppercase tracking-[0.35em] text-cyan-300">Outlet Stock</p>
             <h1 className="mobile-brand-title text-2xl font-black md:text-3xl">Outlet Stock - Catálogo</h1>
           </div>
-          <button onClick={() => setCartOpen(true)} className="mobile-cart-button relative flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 shadow-lg shadow-cyan-500/10 transition hover:bg-cyan-400/20">
-            <Icon name="cart" size={20} />
-            <span className="hidden font-semibold sm:inline">Carrito</span>
-            {count > 0 && <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-emerald-400 px-1 text-xs font-black text-black">{count}</span>}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openChat([])}
+              className="mobile-cart-button relative flex items-center gap-2 rounded-2xl border border-violet-400/30 bg-violet-400/10 px-4 py-3 shadow-lg shadow-violet-500/10 transition hover:bg-violet-400/20"
+              aria-label="Abrir chat"
+            >
+              <MessageCircle size={20} />
+              <span className="hidden font-semibold sm:inline">Chat</span>
+            </button>
+            <button onClick={() => setCartOpen(true)} className="mobile-cart-button relative flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 shadow-lg shadow-cyan-500/10 transition hover:bg-cyan-400/20">
+              <Icon name="cart" size={20} />
+              <span className="hidden font-semibold sm:inline">Carrito</span>
+              {count > 0 && <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-emerald-400 px-1 text-xs font-black text-black">{count}</span>}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -980,6 +1073,28 @@ export default function App() {
           </>
         )}
       </AnimatePresence>
+
+      <AuthModal
+        supabase={supabase}
+        open={authModalOpen}
+        reason={authReason}
+        onClose={() => {
+          setAuthModalOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={async () => {
+          const { data } = await supabase.auth.getSession();
+          const nextSession = data?.session || null;
+          setSession(nextSession);
+          if (nextSession?.user?.id) await loadUserProfile(nextSession.user.id);
+          if (nextSession?.user) {
+            setAuthModalOpen(false);
+            const action = pendingAction;
+            setPendingAction(null);
+            action?.();
+          }
+        }}
+      />
     </div>
   );
 }
