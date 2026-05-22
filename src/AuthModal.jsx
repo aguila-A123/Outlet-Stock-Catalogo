@@ -104,9 +104,23 @@ export default function AuthModal({ supabase, open, reason = "Para continuar nec
             shipping_address: fullShippingAddress,
             city: form.city,
             postal_code: form.postalCode,
-            updated_at: new Date().toISOString(),
           });
           if (profileError) throw profileError;
+        }
+
+        try {
+          const { error: welcomeEmailError } = await supabase.functions.invoke("send-welcome-email", {
+            body: {
+              email: form.email,
+              name: form.fullName,
+            },
+          });
+
+          if (welcomeEmailError) {
+            console.warn("No se pudo enviar el correo de bienvenida:", welcomeEmailError);
+          }
+        } catch (welcomeEmailError) {
+          console.warn("No se pudo enviar el correo de bienvenida:", welcomeEmailError);
         }
 
         setMessage({ type: "success", text: data?.session ? "Cuenta creada correctamente." : "Cuenta creada. Revisa tu correo para confirmar la cuenta." });
@@ -206,5 +220,5 @@ export default function AuthModal({ supabase, open, reason = "Para continuar nec
         </form>
       </motion.section>
     </div>
-  )
+  );
 }
