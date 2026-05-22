@@ -206,5 +206,5 @@ export default function AuthModal({ supabase, open, reason = "Para continuar nec
         </form>
       </motion.section>
     </div>
-  );
+  )
 }
