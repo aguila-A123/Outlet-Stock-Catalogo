@@ -1,16 +1,29 @@
-Outlet Stock
+OUTLET STOCK - CATALOGO + LOGIN + PERFIL EDITABLE
 
-Para correr:
-npm install
-npm run dev
+Incluye:
+- Catálogo Outlet Stock.
+- Registro e inicio de sesión con Supabase Auth.
+- Perfil registrado en Supabase.
+- Botón de tuerca para editar perfil.
+- Edición de nombre, domicilio, teléfono, código postal y contraseña.
+- El correo se muestra, pero no se edita desde el perfil.
+- Los cambios se actualizan en public.profiles y en user_metadata de Supabase Auth.
 
-Cambios aplicados sobre tu copia de seguridad:
-- Al cerrar la X del modal de pago, se manda cancelar el PaymentIntent a Stripe.
-- El formulario de pago queda arriba.
-- El resumen del pedido queda abajo.
-- Se oculta la barra de scroll del modal de pago.
+PASOS PARA CORRER LOCAL:
+1) Abre la carpeta en VS Code.
+2) Ejecuta:
+   npm install
+3) Ejecuta:
+   npm run dev
+4) Abre la URL local que aparece en la consola.
+
+SUPABASE:
+1) Ve a Supabase > SQL Editor.
+2) Ejecuta el archivo:
+   SUPABASE_PROFILES.sql
+3) Si usas chat en tiempo real, revisa también:
+   SUPABASE_RLS_OPCIONAL.sql
 
 IMPORTANTE:
-También debes actualizar tu Edge Function swift-task en Supabase con el código de:
-supabase/functions/swift-task/index.ts
-Luego dale Deploy updates.
+- La conexión Supabase ya está en src/App.jsx con tu URL y anon key.
+- El anon key de Supabase es público para frontend, pero no compartas service_role keys.

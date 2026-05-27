@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
-import { LogOut, Mail, MessageCircle, UserCircle2 } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, Lock, LogOut, Mail, MapPin, MessageCircle, Save, Settings, User, UserCircle2, X } from "lucide-react";
 import ChatView from "./ChatView.jsx";
 import AuthModal from "./AuthModal.jsx";
 
@@ -451,6 +451,233 @@ if (typeof window !== "undefined" && !window.__OUTLET_STOCK_OFFICIAL_TESTED__) {
   runSelfTests();
 }
 
+
+function ProfileEditField({ icon: Icon, label, value, onChange, type = "text", placeholder, required = false, readOnly = false }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+        {label}{required && <span className="text-cyan-300"> *</span>}
+      </span>
+      <div className="relative">
+        <Icon className="absolute left-4 top-3.5 h-4 w-4 text-cyan-200/70" />
+        <input
+          value={value}
+          onChange={(event) => onChange?.(event.target.value)}
+          type={type}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          className={`w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-11 text-sm font-semibold text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300 ${readOnly ? "cursor-not-allowed opacity-70" : ""}`}
+        />
+      </div>
+    </label>
+  );
+}
+
+function cleanAddressPrefix(value, prefix) {
+  const cleanValue = String(value || "").trim().replace(/\s+/g, " ");
+  const lowerValue = cleanValue.toLowerCase();
+  const lowerPrefix = `${prefix.toLowerCase()} `;
+  return lowerValue.startsWith(lowerPrefix) ? cleanValue.slice(prefix.length).trim() : cleanValue;
+}
+
+function parseShippingAddress(address = "") {
+  const raw = String(address || "").trim();
+  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  const baseAddress = parts[0] || "";
+  const floorPart = parts.find((part) => part.toLowerCase().startsWith("piso ")) || "";
+  const doorPart = parts.find((part) => part.toLowerCase().startsWith("puerta ")) || "";
+
+  return {
+    shippingAddress: baseAddress,
+    floor: cleanAddressPrefix(floorPart, "piso"),
+    door: cleanAddressPrefix(doorPart, "puerta"),
+  };
+}
+
+function translateSupabaseError(error) {
+  const message = error?.message || "";
+  if (message.includes("New password should be different")) return "La nueva contraseña debe ser diferente a la anterior.";
+  if (message.includes("Password should be at least")) return "La contraseña debe tener al menos 6 caracteres.";
+  if (message.includes("Auth session missing")) return "Tu sesión expiró. Vuelve a iniciar sesión.";
+  if (message.includes("JWT expired")) return "Tu sesión expiró. Vuelve a iniciar sesión.";
+  if (message.includes("duplicate key")) return "Ya existe un perfil con esos datos.";
+  return message || "Ocurrió un error inesperado.";
+}
+
+function ProfileEditModal({ open, user, profile, supabase, onClose, onUpdated }) {
+  const parsedAddress = useMemo(() => parseShippingAddress(profile?.shipping_address), [profile?.shipping_address]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [form, setForm] = useState({
+    fullName: profile?.full_name || profile?.nombre || profile?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || "",
+    phone: profile?.phone || user?.user_metadata?.phone || "",
+    shippingAddress: parsedAddress.shippingAddress || user?.user_metadata?.shipping_address || "",
+    floor: parsedAddress.floor || "",
+    door: parsedAddress.door || "",
+    city: profile?.city || user?.user_metadata?.city || "",
+    postalCode: profile?.postal_code || user?.user_metadata?.postal_code || "",
+    password: "",
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    const nextParsedAddress = parseShippingAddress(profile?.shipping_address || user?.user_metadata?.shipping_address || "");
+    setForm({
+      fullName: profile?.full_name || profile?.nombre || profile?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || "",
+      phone: profile?.phone || user?.user_metadata?.phone || "",
+      shippingAddress: nextParsedAddress.shippingAddress || "",
+      floor: nextParsedAddress.floor || "",
+      door: nextParsedAddress.door || "",
+      city: profile?.city || user?.user_metadata?.city || "",
+      postalCode: profile?.postal_code || user?.user_metadata?.postal_code || "",
+      password: "",
+    });
+    setMessage(null);
+  }, [open, profile, user]);
+
+  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  async function handleSave(event) {
+    event.preventDefault();
+    setMessage(null);
+
+    if (!user?.id) {
+      setMessage({ type: "error", text: "Debes iniciar sesión para editar tu perfil." });
+      return;
+    }
+
+    if (!form.fullName || !form.shippingAddress || !form.floor || !form.door || !form.city || !form.postalCode) {
+      setMessage({ type: "error", text: "Completa los campos obligatorios." });
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const cleanFloor = cleanAddressPrefix(form.floor, "piso");
+      const cleanDoor = cleanAddressPrefix(form.door, "puerta");
+      const fullShippingAddress = `${form.shippingAddress.trim()}, Piso ${cleanFloor}, Puerta ${cleanDoor}`;
+      const payload = {
+        id: user.id,
+        full_name: form.fullName.trim(),
+        phone: form.phone.trim(),
+        shipping_address: fullShippingAddress,
+        city: form.city.trim(),
+        postal_code: form.postalCode,
+      };
+
+      const { error: profileError } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+      if (profileError) throw profileError;
+
+      const authUpdate = {
+        data: {
+          full_name: payload.full_name,
+          phone: payload.phone,
+          shipping_address: payload.shipping_address,
+          city: payload.city,
+          postal_code: payload.postal_code,
+        },
+      };
+
+      if (form.password.trim()) {
+        authUpdate.password = form.password.trim();
+      }
+
+      const { error: authError } = await supabase.auth.updateUser(authUpdate);
+      if (authError) throw authError;
+
+      setMessage({ type: "success", text: "Perfil actualizado correctamente." });
+      onUpdated?.(payload);
+      setForm((prev) => ({ ...prev, password: "" }));
+    } catch (error) {
+      setMessage({ type: "error", text: translateSupabaseError(error) });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
+      <motion.section
+        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 18, scale: 0.98 }}
+        className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-[1.8rem] border border-cyan-300/20 bg-[#020914]/95 p-4 text-white shadow-2xl shadow-cyan-500/10 sm:p-6"
+      >
+        <button onClick={onClose} className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white/55 transition hover:bg-white/15 hover:text-white" aria-label="Cerrar">
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="mb-5 pr-10">
+          <p className="mb-2 text-base font-black tracking-tight text-cyan-300 sm:text-lg">Outlet Stock</p>
+          <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Editar perfil</h2>
+          <p className="mt-2 text-sm text-white/50">Puedes editar nombre, domicilio y contraseña. El correo no se edita desde aquí.</p>
+        </div>
+
+        <form onSubmit={handleSave} className="space-y-4">
+          <ProfileEditField icon={Mail} label="Correo" value={user?.email || ""} readOnly />
+          <ProfileEditField icon={User} label="Nombre completo" value={form.fullName} onChange={(value) => update("fullName", value)} placeholder="Ej: Juan Pérez" required />
+          <ProfileEditField icon={MapPin} label="Dirección para el envío" value={form.shippingAddress} onChange={(value) => update("shippingAddress", value)} placeholder="Calle, avenida y número" required />
+
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <ProfileEditField icon={MapPin} label="Piso" value={form.floor} onChange={(value) => update("floor", value)} placeholder="Ej: Piso 30" required />
+            <ProfileEditField icon={MapPin} label="Puerta" value={form.door} onChange={(value) => update("door", value)} placeholder="Ej: 2B" required />
+            <ProfileEditField icon={MapPin} label="C.P." value={form.postalCode} onChange={(value) => update("postalCode", value.replace(/[^0-9]/g, "").slice(0, 5))} placeholder="39300" required />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ProfileEditField icon={MapPin} label="Ciudad" value={form.city} onChange={(value) => update("city", value)} placeholder="Ej: Torrelavega" required />
+            <ProfileEditField icon={User} label="Teléfono" value={form.phone} onChange={(value) => update("phone", value)} placeholder="Ej: 612 34 56 78" />
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-white/45">Nueva contraseña</span>
+            <div className="relative">
+              <Lock className="absolute left-4 top-3.5 h-4 w-4 text-cyan-200/70" />
+              <input
+                value={form.password}
+                onChange={(event) => update("password", event.target.value)}
+                type={showPassword ? "text" : "password"}
+                placeholder="Déjalo vacío si no quieres cambiarla"
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-11 pr-11 text-sm font-semibold text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300"
+              />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-4 top-3.5 text-white/45 transition hover:text-white" aria-label="Mostrar contraseña">
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </label>
+
+          <AnimatePresence>
+            {message && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${message.type === "success" ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100" : "border-red-300/25 bg-red-400/10 text-red-100"}`}
+              >
+                {message.type === "success" ? <CheckCircle2 className="mt-0.5 h-4 w-4" /> : <X className="mt-0.5 h-4 w-4" />}
+                <span>{message.text}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-300 via-sky-400 to-violet-500 px-5 py-3 text-sm font-black text-black shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save size={17} />
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </form>
+      </motion.section>
+    </div>
+  );
+}
+
 export default function App() {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -473,6 +700,7 @@ export default function App() {
   const [authReason, setAuthReason] = useState("Para continuar necesitas iniciar sesión o crear una cuenta.");
   const [pendingAction, setPendingAction] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
 
   const categories = useMemo(() => buildCategories(products), [products]);
   const filteredProducts = useMemo(() => filterProducts(products, query, category), [products, query, category]);
@@ -552,12 +780,18 @@ export default function App() {
 
   async function handleSignOut() {
     setProfileMenuOpen(false);
+    setProfileEditOpen(false);
     setChatOpen(false);
     setChatCartItems([]);
     setProfile(null);
     setSession(null);
     await supabase.auth.signOut();
     if (window.location.pathname === "/chat") window.history.pushState({}, "", "/");
+  }
+
+  function handleProfileUpdated(nextProfile) {
+    setProfile(nextProfile);
+    loadUserProfile(user?.id);
   }
 
   useEffect(() => {
@@ -998,8 +1232,22 @@ export default function App() {
                           <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-400 text-black">
                             <UserCircle2 size={28} />
                           </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black">{getProfileDisplayName()}</p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-black">{getProfileDisplayName()}</p>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setProfileEditOpen(true);
+                                }}
+                                className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-200 transition hover:bg-cyan-300 hover:text-black"
+                                aria-label="Editar perfil"
+                                title="Editar perfil"
+                              >
+                                <Settings size={15} />
+                              </button>
+                            </div>
                             <p className="truncate text-xs text-white/50">Perfil registrado</p>
                           </div>
                         </div>
@@ -1014,6 +1262,14 @@ export default function App() {
                             <p className="mt-1 truncate text-sm font-bold text-white/90">{user.email}</p>
                           </div>
                         </div>
+
+                        <button
+                          onClick={() => setProfileEditOpen(true)}
+                          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-300 hover:text-black"
+                        >
+                          <Settings size={17} />
+                          Editar perfil
+                        </button>
 
                         <button
                           onClick={handleSignOut}
@@ -1189,6 +1445,15 @@ export default function App() {
           </>
         )}
       </AnimatePresence>
+
+      <ProfileEditModal
+        open={profileEditOpen}
+        user={user}
+        profile={profile}
+        supabase={supabase}
+        onClose={() => setProfileEditOpen(false)}
+        onUpdated={handleProfileUpdated}
+      />
 
       <AuthModal
         supabase={supabase}

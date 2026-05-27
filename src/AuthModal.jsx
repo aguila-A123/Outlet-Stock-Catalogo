@@ -203,7 +203,7 @@ export default function AuthModal({ supabase, open, reason = "Para continuar nec
               </button>
             </div>
           </label>
-
+          
           <AnimatePresence>
             {message && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${message.type === "success" ? "border-green-400/20 bg-green-400/10 text-green-200" : "border-red-400/20 bg-red-400/10 text-red-200"}`}>
